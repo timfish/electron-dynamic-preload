@@ -22,10 +22,9 @@ export class ExecuteInRenderer {
 
   public static preload() {
     const hash = window.location.hash.slice(1);
-    const toRun = JSON.parse(decodeURIComponent(hash)) as string[][] || [];
+    const toRun = JSON.parse(decodeURIComponent(hash)) as [string, string, any[]][] || [];
 
-    for (const each of toRun) {
-      let [scriptPath, scriptExport, args] = each;
+    for (let [scriptPath, scriptExport, args] of toRun) {
       scriptPath = path.resolve(this.getAppPath(), scriptPath);
       const loadedModule = require(scriptPath);
       const method = loadedModule[scriptExport];
@@ -34,9 +33,9 @@ export class ExecuteInRenderer {
   }
 
   private static getAppPath() {
+    const a = process.type === 'renderer' ? remote.app : app;
     // this is required due to:
     // https://github.com/electron-userland/electron-forge/issues/346
-    const a = process.type === 'renderer' ? remote.app : app;
     return a.getAppPath().replace(/^(.*)\\node_modules.*default_app\.asar$/, '$1');
   }
 }
