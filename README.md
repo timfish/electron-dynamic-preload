@@ -81,7 +81,7 @@ exports.setBackgroundColor = function setBackgroundColor(color) {
   } else {
     return {
       renderScript: module.filename,
-      renderScriptExport: testing.name,
+      renderScriptExport: setBackgroundColor.name,
       renderScriptArgs: [color]
     };
   }

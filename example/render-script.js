@@ -1,5 +1,5 @@
 
-exports.testing = function testing(color) {
+exports.setBackgroundColor = function setBackgroundColor(color) {
   if (process.type === 'renderer') {
     window.addEventListener('DOMContentLoaded', () => {
       document.body.style.backgroundColor = color;
@@ -7,7 +7,7 @@ exports.testing = function testing(color) {
   } else {
     return {
       renderScript: module.filename,
-      renderScriptExport: testing.name,
+      renderScriptExport: setBackgroundColor.name,
       renderScriptArgs: [color]
     };
   }
