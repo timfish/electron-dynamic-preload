@@ -28,7 +28,7 @@ win.loadURL(url.format({
   hash: hash
 }));
 ```
-String paths and export names in files is generally a bad idea so see [below for an exmaple](#render-scriptjs) of how to use `module.filename` and `someFunc.name`.
+String paths and export names in files is generally a bad idea so see [below for an example](#render-scriptjs) of how to use `module.filename` and `someFunc.name`.
 
 In your preload script simply:
 ```javascript
@@ -73,7 +73,7 @@ app.on('ready', () => {
 
 ### render-script.js
 ```javascript
-exports.setBackgroundColor = function testing(color) {
+exports.setBackgroundColor = function setBackgroundColor(color) {
   if (process.type === 'renderer') {
     window.addEventListener('DOMContentLoaded', () => {
       document.body.style.backgroundColor = color;
