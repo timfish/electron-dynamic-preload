@@ -22,7 +22,7 @@ export class ExecuteInRenderer {
 
   public static preload() {
     const hash = window.location.hash.slice(1);
-    const toRun = JSON.parse(decodeURIComponent(hash)) as [string, string, any[]][] || [];
+    const toRun = JSON.parse(decodeURIComponent(hash) || '[]') as [string, string, any[]][];
 
     for (let [scriptPath, scriptExport, args] of toRun) {
       scriptPath = path.resolve(this.getAppPath(), scriptPath);
