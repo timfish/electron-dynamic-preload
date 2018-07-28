@@ -12,7 +12,7 @@ API introduced in Electron 2.x.x. That means it won't work on anything older!
 | ---------- | ---------------- | ----------------------------------------------- | ---------------------- |
 | modulePath | string           | Path to file to load in preload                 |
 | params     | any[]            | Parameters to pass to default exported function | []                     |
-| session    | Electron.session | Display the page title in the titlebar          | session.defaultSession |
+| session    | Electron.session | The session to add preload scripts to           | session.defaultSession |
 
 ### Points to note:
 
