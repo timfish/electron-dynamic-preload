@@ -1,4 +1,4 @@
-import { session as electronSession } from 'electron';
+import { app, session as electronSession } from 'electron';
 import * as path from 'path';
 
 /**
@@ -12,7 +12,21 @@ export function addPreloadWithParams(
   modulePath: string,
   params: any[] | IArguments = [],
   session: Electron.session = electronSession.defaultSession
-) {
+): void {
+  if (app.isReady()) {
+    addInternal(modulePath, params, session);
+  } else {
+    app.once('ready', () => {
+      addInternal(modulePath, params, session);
+    });
+  }
+}
+
+function addInternal(
+  modulePath: string,
+  params: any[] | IArguments = [],
+  session: Electron.session = electronSession.defaultSession
+): void {
   ensureRequireWrapFirstPreload(session);
 
   // Ensure absolute path
@@ -31,9 +45,9 @@ export function addPreloadWithParams(
   );
 }
 
-function addPreload(path: string, session: Electron.session) {
+function addPreload(modulePath: string, session: Electron.session) {
   const preloads = session.getPreloads();
-  preloads.push(path);
+  preloads.push(modulePath);
   session.setPreloads(preloads);
 }
 
