@@ -11,7 +11,7 @@ import * as path from 'path';
 export function addPreloadWithParams(
   modulePath: string,
   params: any[] | IArguments = [],
-  session: Electron.session = electronSession.defaultSession
+  session?: Electron.session
 ): void {
   if (app.isReady()) {
     addInternal(modulePath, params, session);
@@ -24,9 +24,11 @@ export function addPreloadWithParams(
 
 function addInternal(
   modulePath: string,
-  params: any[] | IArguments = [],
-  session: Electron.session = electronSession.defaultSession
+  params: any[] | IArguments,
+  session: Electron.session
 ): void {
+  session = session || electronSession.defaultSession;
+
   ensureRequireWrapFirstPreload(session);
 
   // Ensure absolute path

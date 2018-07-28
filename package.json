@@ -1,7 +1,7 @@
 {
   "name": "electron-dynamic-preload",
   "description": "Pass parameters to Electron preload scripts",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "main": "./dist/index.js",
   "repository": "https://github.com/timfish/electron-dynamic-preload",
   "author": "Tim Fish",
