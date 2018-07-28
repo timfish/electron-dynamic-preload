@@ -1,90 +1,94 @@
-
 # electron-dynamic-preload
 
-Sometimes we'd like to dynamically set preload scripts from the main process and sometimes we want to pass parameters.
+### Sometimes its handy to be able to pass parameters to Electron preload scripts.
 
-This module injects the code location and parameters through the BrowserWindow url hash and then runs the required code in preload in the renderer.
+This module uses the
+[`session.setPreloads()`](https://electronjs.org/docs/api/session#sessetpreloadspreloads)
+API introduced in Electron 2.x.x. That means it won't work on anything older!
 
-### Points to note
+## `addPreloadWithParams(modulePath, params[, session])`
 
-- All parameters are passed as JSON so dont expect anything that doesn't survive `JSON.parse(JSON.stringify(data))` to get passed safely.
+| Parameter  | Type             | Description                                     | Default                |
+| ---------- | ---------------- | ----------------------------------------------- | ---------------------- |
+| modulePath | string           | Path to file to load in preload                 |
+| params     | any[]            | Parameters to pass to default exported function | []                     |
+| session    | Electron.session | Display the page title in the titlebar          | session.defaultSession |
 
-- The url hash is probably limited to around 2k characters so even though an attempt has been made to minimise data sent, if you hit the limit it will probably break.
+### Points to note:
 
+- All `params` to the renderer are serialised so dont expect anything to make it
+  through that doesn't survive `JSON.parse(JSON.stringify(data))`.
 
-Sending config from the main process:
-
-```javascript
-const hash = ExecuteInRenderer.getWindowHash({
-  renderScript: 'path/to/script/file',
-  renderScriptExport: 'setBackgroundColor',
-  renderScrtipArgs: ['#ff0000']
-}, { /* as many as you like */ })
-
-win.loadURL(url.format({
-  pathname: './index.html',
-  protocol: 'file:',
-  slashes: true,
-  hash: hash
-}));
-```
-String paths and export names in files is generally a bad idea so see [below for an example](#render-scriptjs) of how to use `module.filename` and `someFunc.name`.
-
-In your preload script simply:
-```javascript
-const { ExecuteInRenderer } = require('./dist/')
-ExecuteInRenderer.preload();
-```
-Alternatively, use the pre-supplied preload script which does just that:
-```
-webPreferences: {
-  preload: 'node_modules/electron-dynamic-preload/preload.js'
-}
-```
+- Electron preload scripts are passed to the renderer via command line
+  arguments. There is probably a limit to the amount of data that can be passed
+  this way. If you have to look up this limit, you're probably attempting to
+  pass something ridiculously large. **Do it another way!**
 
 ## Full Example
 
-### index.js
+Say you want to make a library that allows you to set the background colour of
+`BrowserWindow`'s from the main process (yes this is an oversimplified example):
+
+`script.js`
+
 ```javascript
-const { BrowserWindow, app } = require('electron');
-const { ExecuteInRenderer } = require('electron-dynamic-preload');
-const { setBackgroundColor } = require('./render-script')
-const url = require('url');
+const { addPreloadWithParams } = require('electron-dynamic-preload');
 
-let win;
-
-app.on('ready', () => {
-  win = new BrowserWindow({
-    webPreferences: {
-      preload: 'node_modules/electron-dynamic-preload/preload.js'
-    }
-  })
-
-  const hash = ExecuteInRenderer.getWindowHash(setBackgroundColor('red'));
-
-  win.loadURL(url.format({
-    pathname: './index.html',
-    protocol: 'file:',
-    slashes: true,
-    hash: hash
-  }));
-});
-```
-
-### render-script.js
-```javascript
-exports.setBackgroundColor = function setBackgroundColor(color) {
-  if (process.type === 'renderer') {
+module.exports = function setBackgroundColor(color) {
+  if (process.type === 'browser') {
+    addPreloadWithParams(__filename, arguments);
+  } else {
     window.addEventListener('DOMContentLoaded', () => {
       document.body.style.backgroundColor = color;
     });
-  } else {
-    return {
-      renderScript: module.filename,
-      renderScriptExport: setBackgroundColor.name,
-      renderScriptArgs: [color]
-    };
   }
 };
+```
+
+`main.js`
+
+```javascript
+const { BrowserWindow, app } = require('electron');
+const path = require('path');
+const url = require('url');
+
+const setBackgroundColor = require('./script');
+
+app.on('ready', () => {
+  // This call in the main process is all that's required!
+  setBackgroundColor('red');
+
+  var win = new BrowserWindow();
+  win.loadURL(
+    url.format({
+      pathname: path.join(__dirname, 'index.html'),
+      protocol: 'file:'
+    })
+  );
+});
+```
+
+## How Does It Work?
+
+The Electron
+[`session.setPreloads`](https://electronjs.org/docs/api/session#sessetpreloadspreloads)
+API only lets you pass absolute paths as preload scripts. To get round this, we
+append a magic string and then the encoded parameters and ensure it still looks
+like a path.
+
+The above example results in the following `--preload-scripts` being passed to
+the renderer process.
 
 ```
+--preload-scripts="C:\Users\tim\Documents\my-app\node_modules\electron-dynamic-preload\dist\wrap-require;C:\Users\tim\Documents\my-app\script.js\edp-require-with-params\%5B%22red%22%5D"
+```
+
+`electron-dynamic-preload` always ensures that the first preload script wraps
+`require` so that that subsequent scripts can have the magic string removed and
+parameters decoded!
+
+## FAQ
+
+1.  Is this not super hacky and 🤮
+
+    Yes, probably!

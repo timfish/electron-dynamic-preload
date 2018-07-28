@@ -1,41 +1,48 @@
-import { app, remote } from 'electron';
+import { session as electronSession } from 'electron';
 import * as path from 'path';
 
-export interface IExecuteInRendererTask {
-  readonly renderScript: string;
-  readonly renderScriptExport: string;
-  readonly renderScriptArgs: any[];
+/**
+ *
+ *
+ * @param {string} modulePath
+ * @param {any[]} [params=[]]
+ * @param {Electron.session} [session=session.defaultSession]
+ */
+export function addPreloadWithParams(
+  modulePath: string,
+  params: any[] | IArguments = [],
+  session: Electron.session = electronSession.defaultSession
+) {
+  ensureRequireWrapFirstPreload(session);
+
+  // Ensure absolute path
+  if (!path.isAbsolute(modulePath)) {
+    modulePath = path.resolve(modulePath);
+  }
+
+  addPreload(
+    path.join(
+      modulePath,
+      'edp-require-with-params',
+      // we have to use spread if we want IArguments to be an array
+      encodeURIComponent(JSON.stringify([...params]))
+    ),
+    session
+  );
 }
 
-export class ExecuteInRenderer {
-  public static getWindowHash(...tasks: IExecuteInRendererTask[]): string {
-    // simplify to arrays to save space
-    const obj = tasks.map(t => [
-      // also make all paths relative to the app base
-      path.relative(this.getAppPath(), t.renderScript),
-      t.renderScriptExport,
-      t.renderScriptArgs
-    ]);
+function addPreload(path: string, session: Electron.session) {
+  const preloads = session.getPreloads();
+  preloads.push(path);
+  session.setPreloads(preloads);
+}
 
-    return encodeURIComponent(JSON.stringify(obj));
-  }
+function ensureRequireWrapFirstPreload(session: Electron.session) {
+  const preloads = session.getPreloads();
+  const wrapPath = path.join(__dirname, 'wrap-require');
 
-  public static preload() {
-    const hash = window.location.hash.slice(1);
-    const toRun = JSON.parse(decodeURIComponent(hash) || '[]') as [string, string, any[]][];
-
-    for (let [scriptPath, scriptExport, args] of toRun) {
-      scriptPath = path.resolve(this.getAppPath(), scriptPath);
-      const loadedModule = require(scriptPath);
-      const method = loadedModule[scriptExport];
-      method.apply(undefined, args);
-    }
-  }
-
-  private static getAppPath() {
-    const a = process.type === 'renderer' ? remote.app : app;
-    // this is required due to:
-    // https://github.com/electron-userland/electron-forge/issues/346
-    return a.getAppPath().replace(/^(.*)\\node_modules.*default_app\.asar$/, '$1');
+  if (preloads.length === 0 || preloads[0] !== wrapPath) {
+    preloads.unshift(wrapPath);
+    session.setPreloads(preloads);
   }
 }
