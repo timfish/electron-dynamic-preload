@@ -10,20 +10,22 @@ import * as path from 'path';
  */
 export function addPreloadWithParams(
   modulePath: string,
+  exportName: string,
   params: any[] | IArguments = [],
   session?: Electron.session
 ): void {
   if (app.isReady()) {
-    addInternal(modulePath, params, session);
+    addInternal(modulePath, exportName, params, session);
   } else {
     app.once('ready', () => {
-      addInternal(modulePath, params, session);
+      addInternal(modulePath, exportName, params, session);
     });
   }
 }
 
 function addInternal(
   modulePath: string,
+  exportName: string,
   params: any[] | IArguments,
   session: Electron.session
 ): void {
@@ -40,6 +42,7 @@ function addInternal(
     path.join(
       modulePath,
       'edp-require-with-params',
+      exportName,
       // we have to use spread if we want IArguments to be an array
       encodeURIComponent(JSON.stringify([...params]))
     ),

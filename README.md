@@ -1,20 +1,21 @@
 # electron-dynamic-preload
 
-### Sometimes its handy to be able to pass parameters to Electron preload scripts.
+### Sometimes it's handy to be able to pass parameters to Electron preload scripts
 
 This module uses the
 [`session.setPreloads()`](https://electronjs.org/docs/api/session#sessetpreloadspreloads)
-API introduced in Electron 2.x.x. That means it won't work on anything older!
+API introduced in Electron 2.x.x. It won't work on older releases!
 
-## `addPreloadWithParams(modulePath, params[, session])`
+### `addPreloadWithParams(modulePath, exportName[, params, session])`
 
 | Parameter  | Type             | Description                                     | Default                |
 | ---------- | ---------------- | ----------------------------------------------- | ---------------------- |
 | modulePath | string           | Path to file to load in preload                 |
+| exportName | string           | Name of export to execute                       |                        |
 | params     | any[]            | Parameters to pass to default exported function | []                     |
 | session    | Electron.session | The session to add preload scripts to           | session.defaultSession |
 
-### Points to note:
+#### Points to note:
 
 - All `params` to the renderer are serialised so dont expect anything to make it
   through that doesn't survive `JSON.parse(JSON.stringify(data))`.
@@ -27,44 +28,38 @@ API introduced in Electron 2.x.x. That means it won't work on anything older!
 ## Full Example
 
 Say you want to make a library that allows you to set the background colour of
-`BrowserWindow`'s from the main process (yes this is an oversimplified example):
+all `BrowserWindow`s from the main process (yes this is an oversimplified
+example):
 
 `script.js`
 
 ```javascript
-const { addPreloadWithParams } = require('electron-dynamic-preload');
+import { addPreloadWithParams } from 'electron-dynamic-preload';
 
-module.exports = function setBackgroundColor(color) {
+export function setBackgroundColor(color) {
   if (process.type === 'browser') {
-    addPreloadWithParams(__filename, arguments);
+    addPreloadWithParams(__filename, setBackgroundColor.name, arguments);
   } else {
     window.addEventListener('DOMContentLoaded', () => {
       document.body.style.backgroundColor = color;
     });
   }
-};
+}
 ```
 
 `main.js`
 
 ```javascript
-const { BrowserWindow, app } = require('electron');
-const path = require('path');
-const url = require('url');
+import { BrowserWindow, app } from 'electron';
+import { setBackgroundColor } from './script';
+import * as path from 'path';
 
-const setBackgroundColor = require('./script');
+// This call in the main process is all that's required!
+setBackgroundColor('red');
 
 app.on('ready', () => {
-  // This call in the main process is all that's required!
-  setBackgroundColor('red');
-
   var win = new BrowserWindow();
-  win.loadURL(
-    url.format({
-      pathname: path.join(__dirname, 'index.html'),
-      protocol: 'file:'
-    })
-  );
+  win.loadURL(path.join(__dirname, 'index.html'));
 });
 ```
 
@@ -72,20 +67,18 @@ app.on('ready', () => {
 
 The Electron
 [`session.setPreloads`](https://electronjs.org/docs/api/session#sessetpreloadspreloads)
-API only lets you pass absolute paths as preload scripts. To get round this, we
-append a magic string and then the encoded parameters and ensure it still looks
-like a path.
+API only lets us pass absolute paths as preload scripts. To get round this, we
+append a magic string, the export name and the encoded parameters to ensure it
+still looks like an absolute path.
 
-The above example results in the following `--preload-scripts` being passed to
-the renderer process.
+The above example results in the following `--preload-scripts` argument being
+passed to the renderer process.
 
-```
---preload-scripts="C:\Users\tim\Documents\my-app\node_modules\electron-dynamic-preload\dist\wrap-require;C:\Users\tim\Documents\my-app\script.js\edp-require-with-params\%5B%22red%22%5D"
-```
+`--preload-scripts="/user/me/my-app/node_modules/electron-dynamic-preload/dist/wrap-require;/user/me/my-app/script.js/edp-require-with-params/setBackgroundColor/%5B%22red%22%5D"`
 
-`electron-dynamic-preload` always ensures that the first preload script wraps
-`require` so that that subsequent scripts can have the magic string removed and
-parameters decoded!
+`electron-dynamic-preload` ensures that the first preload script wraps
+`require`. This ensures that subsequent preload scripts have the magic string
+removed, parameters decoded and then pass them to the named export.
 
 ## FAQ
 

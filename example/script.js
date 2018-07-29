@@ -1,8 +1,8 @@
 const { addPreloadWithParams } = require('../dist/');
 
-module.exports = function setBackgroundColor(color) {
+exports.setBackgroundColor = function setBackgroundColor(color) {
   if (process.type === 'browser') {
-    addPreloadWithParams(__filename, arguments);
+    addPreloadWithParams(__filename, setBackgroundColor.name, arguments);
   } else {
     window.addEventListener('DOMContentLoaded', () => {
       document.body.style.backgroundColor = color;
